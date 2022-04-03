@@ -1,17 +1,20 @@
-#include "RTClib.h"
+#include <RTClib.h>
 RTC_DS3231 rtc;
 char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+uint8_t s_now,s_old;
 
 uint8_t pump = 23,lamp = 19;
 uint8_t state[] = {0,0};
 uint8_t state_check[] = {0,0};
 
 int buzzer = 18,ch = 0;
-String note[] = {"e","e","e","c","e","g","n","g","n","c","g","e",  "c","g","n","e","e","e","c","e","g"};
-uint8_t level[] = {5,5,5,5,5,5,0,4,0,5,4,4,5,4,0,5,5,5,5,5,5};
-float delay_note[] = {0.5,1,1,0.5,1,1,1,1,1,1,1,1, 1,1,0,0.5,1,1,0.5,1,1};
-uint8_t speed = 1;
-uint8_t levelup = 0;
+String note[] = {"e","e","e","c","e","g"};
+uint8_t level[] = {5,5,5,5,5,5};
+float delay_note[] = {0.5,1,1,0.5,1,1};
+float speed = 0.5;
+uint8_t levelup = 2;
+bool song_play,start;
+
 void setup () {
   Serial.begin(115200);
   if (!rtc.begin()) {
@@ -32,46 +35,58 @@ void setup () {
 
 void loop () {
   DateTime now = rtc.now();
-  Serial.println(String(now.hour()) + ":" + String(now.minute()) + ":" + String(now.second()) + " " + String(now.day()) + "/" + String(now.month()) + "/" + String(now.year() + 543) + " " + daysOfTheWeek[now.dayOfTheWeek()]);
-  Serial.println("Temperature: " + String(rtc.getTemperature()) + " C");
-  Serial.println();
-
-  for (int x = 0;x < 2;x++) {
-    state_check[x] = state[x];
-  }
   
   //low on hight off
   if (now.hour() >= 8 && now.hour() < 16) {
-    Serial.println("pump on");
     state[0] = 1;
     digitalWrite(pump, LOW);
   }else {
-    Serial.println("pump off");
     state[0] = 0;
     digitalWrite(pump, HIGH);
   }
 
   if (now.hour() >= 18 || now.hour() < 5) {
-    Serial.println("lamp on");
     state[1] = 1;
     digitalWrite(lamp, LOW);
   }else {
-    Serial.println("lamp off");
     state[1] = 0;
     digitalWrite(lamp, HIGH);
   }
-  
-  for (int x = 0;x < 2;x++) {
-    if (state_check[x] != state[x]) {
-      song();
+
+  s_now = now.second();
+  if (s_now != s_old) {
+    s_old = s_now;
+    Serial.println(String(now.hour()) + ":" + String(now.minute()) + ":" + String(now.second()) + " " + String(now.day()) + "/" + String(now.month()) + "/" + String(now.year() + 543) + " " + daysOfTheWeek[now.dayOfTheWeek()]);
+    Serial.println("Temperature: " + String(rtc.getTemperature()) + " C");
+    for (int x = 0;x < 2;x++) {
+      if (x == 0) {
+        if (state[x] == 1) {
+          Serial.println("pump on");
+        }else {
+          Serial.println("pump off");
+        }
+      }else {
+        if (state[x] == 1) {
+          Serial.println("lamp on");
+        }else {
+          Serial.println("lamp off");
+        }
+      }
+      if (state_check[x] != state[x]) {
+        song_play = true;
+      }
+      state_check[x] = state[x];
     }
+    if (song_play == true && start == true) {
+      song();
+      song_play = false;
+    }else {
+      start = true;
+      song_play = false;
+    }
+    Serial.println();
   }
-  
   delay(10);
-//  digitalWrite(buzzer, HIGH);
-//  delay(10000);
-//  digitalWrite(buzzer, LOW);
-//  delay(10000);
 }
 
 void song() {
@@ -94,7 +109,7 @@ void song() {
     }else if (note[x] == "n") {
       ledcWrite(ch, 0);
     }
-    delay(int(delay_note[x] * int(500 / speed)));
+    delay(int(delay_note[x] * int(1000 * speed)));
   }
   ledcWrite(ch, 0);
 }
