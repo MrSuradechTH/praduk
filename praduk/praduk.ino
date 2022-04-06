@@ -11,8 +11,8 @@ int buzzer = 18,ch = 0;
 String note[] = {"e","e","e","c","e","g"};
 uint8_t level[] = {5,5,5,5,5,5};
 float delay_note[] = {0.5,1,1,0.5,1,1};
-float speed = 0.5;
-uint8_t levelup = 2;
+float speed = 3; //only 0-infinity
+uint8_t levelup = 3;
 bool song_play,start;
 
 void setup () {
@@ -37,20 +37,16 @@ void loop () {
   DateTime now = rtc.now();
   
   //low on hight off
-  if (now.hour() >= 8 && now.hour() < 16) {
+  if (now.minute() < 30) {
     state[0] = 1;
-    digitalWrite(pump, LOW);
   }else {
     state[0] = 0;
-    digitalWrite(pump, HIGH);
   }
 
   if (now.hour() >= 18 || now.hour() < 5) {
     state[1] = 1;
-    digitalWrite(lamp, LOW);
   }else {
     state[1] = 0;
-    digitalWrite(lamp, HIGH);
   }
 
   s_now = now.second();
@@ -59,30 +55,38 @@ void loop () {
     Serial.println(String(now.hour()) + ":" + String(now.minute()) + ":" + String(now.second()) + " " + String(now.day()) + "/" + String(now.month()) + "/" + String(now.year() + 543) + " " + daysOfTheWeek[now.dayOfTheWeek()]);
     Serial.println("Temperature: " + String(rtc.getTemperature()) + " C");
     for (int x = 0;x < 2;x++) {
-      if (x == 0) {
-        if (state[x] == 1) {
-          Serial.println("pump on");
-        }else {
-          Serial.println("pump off");
-        }
-      }else {
-        if (state[x] == 1) {
-          Serial.println("lamp on");
-        }else {
-          Serial.println("lamp off");
-        }
-      }
       if (state_check[x] != state[x]) {
         song_play = true;
       }
       state_check[x] = state[x];
     }
+
     if (song_play == true && start == true) {
       song();
       song_play = false;
     }else {
       start = true;
       song_play = false;
+    }
+
+    for (int x = 0;x < 2;x++) {
+        if (x == 0) {
+          if (state[x] == 1) {
+            digitalWrite(pump, LOW);
+            Serial.println("pump on");
+          }else {
+            digitalWrite(pump, HIGH);
+            Serial.println("pump off");
+          }
+        }else {
+          if (state[x] == 1) {
+            digitalWrite(lamp, LOW);
+            Serial.println("lamp on");
+          }else {
+            digitalWrite(lamp, HIGH);
+            Serial.println("lamp off");
+          }
+        }
     }
     Serial.println();
   }
@@ -109,7 +113,7 @@ void song() {
     }else if (note[x] == "n") {
       ledcWrite(ch, 0);
     }
-    delay(int(delay_note[x] * int(1000 * speed)));
+    delay(int(delay_note[x] * int(1000 / (speed + 0.0001))));
   }
   ledcWrite(ch, 0);
 }
